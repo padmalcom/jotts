@@ -1,4 +1,4 @@
-from synthesizer.inference import Synthesizer
+from .synthesizer.inference import Synthesizer
 from pathlib import Path
 import numpy as np
 import soundfile as sf
