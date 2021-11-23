@@ -22,7 +22,7 @@ jotts.text2wav("Es war aber auch schon mal besser!")
 ```
 
 ## Todo
-- Add an option to chance the default audio device to speak the text
+- Add an option to change the default audio device to speak the text
 - Add a parameter to select other models but the default model
 - Add threading or multi processing to allow speaking without blocking
 - Add a vocoder instead of griffin-lim to improve audio output.
