@@ -84,8 +84,30 @@ class JoTTS:
 			
 		logger.debug("Loading the synthesizer...")
 		self.synthesizer = Synthesizer(self.syn_model_fpath)	
-		
+
+	def _replace_umlauts(self, string):
+		u = 'ü'.encode()
+		U = 'Ü'.encode()
+		a = 'ä'.encode()
+		A = 'Ä'.encode()
+		o = 'ö'.encode()
+		O = 'Ö'.encode()
+		ss = 'ß'.encode()
+
+		string = string.encode()
+		string = string.replace(u, b'ue')
+		string = string.replace(U, b'Ue')
+		string = string.replace(a, b'ae')
+		string = string.replace(A, b'Ae')
+		string = string.replace(o, b'oe')
+		string = string.replace(O, b'Oe')
+		string = string.replace(ss, b'ss')
+
+		string = string.decode('utf-8')
+		return string
+
 	def _gen_wav(self, text):
+		text = self._replace_umlauts(text)
 		texts = [text]
 		embeds = [[0] * 256]
 		specs = self.synthesizer.synthesize_spectrograms(texts, embeds)
