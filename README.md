@@ -10,7 +10,7 @@ in case that the last download of the synthesizer failed and the model cannot be
 - Call speak with a *text* parameter that contains the text to speak out loud. The second parameter
 can be set to True, to wait until speaking is done.
 
-- Use *text2wav* to create a wav file instead of speaking the text. 
+- Use *textToWav* to create a wav file instead of speaking the text. 
 
 ## Example usage
 
@@ -18,7 +18,7 @@ can be set to True, to wait until speaking is done.
 from jotts import JoTTS
 jotts = JoTTS()
 jotts.speak("Das Wetter heute ist fantastisch.", True)
-jotts.text2wav("Es war aber auch schon mal besser!")
+jotts.textToWav("Es war aber auch schon mal besser!")
 ```
 
 ## Todo
