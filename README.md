@@ -3,6 +3,9 @@ JoTTS is a German text-to-speech engine using tacotron and griffin-lim. The synt
 has been trained on my voice using Tacotron1. Due to real time usage I decided not to include a vocoder and use
 griffin-lim instead which results in a more robotic voice but is much faster.
 
+<a href="https://www.buymeacoffee.com/padmalcom" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
+
 ## API
 - First create an instance of JoTTS. The initializer takes force_model_download as an optional parameter
 in case that the last download of the synthesizer failed and the model cannot be applied.
