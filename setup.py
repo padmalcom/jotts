@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="jotts",
-    version="0.5.4",
+    version="1.0.0",
 	license="MIT",
     author="Jonas Freiknecht",
     author_email="j.freiknecht@googlemail.com",

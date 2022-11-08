@@ -144,13 +144,13 @@ class JoTTS:
 		return Synthesizer.griffin_lim(spec)
 
 	
-	def speak(self, text, do_sleep = False, use_wavernn_vocoder=False):
+	def speak(self, text, wait_for_end = False, use_wavernn_vocoder=False):
 		generated_wav = self._gen_wav(text, use_wavernn_vocoder)
 		audio_length = librosa.get_duration(generated_wav, sr = 14545)
 		sd.play(generated_wav.astype(np.float32), round(self.synthesizer.sample_rate / 1.0))
-		if do_sleep:
+		if wait_for_end:
 			time.sleep(audio_length)
 
-	def textToWav(self, text, out_path='gen.wav', use_wavernn_vocoder=False):
+	def textToWav(self, text, out_path, use_wavernn_vocoder=False):
 		generated_wav = self._gen_wav(text, use_wavernn_vocoder)
 		sf.write(out_path, generated_wav.astype(np.float32), round(self.synthesizer.sample_rate / 1.0))
