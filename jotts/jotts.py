@@ -1,4 +1,5 @@
 from .synthesizer.inference import Synthesizer
+from .vocoder import inference as vocoder
 from pathlib import Path
 import numpy as np
 import soundfile as sf
@@ -9,65 +10,90 @@ import os
 import sounddevice as sd
 import time
 from loguru import logger
-
-from github import Github
+import json
 import urllib.request
 from tqdm import tqdm
 
 class DownloadProgressBar(tqdm):
-    def update_to(self, b=1, bsize=1, tsize=None):
-        if tsize is not None:
-            self.total = tsize
-        self.update(b * bsize - self.n)
+	def update_to(self, b=1, bsize=1, tsize=None):
+		if tsize is not None:
+			self.total = tsize
+		self.update(b * bsize - self.n)
 
 class JoTTS:
 
-	# Not implemented yet, due to github rate limits
-	#def __get_download_path__(self):
-		# Identify latest release on github
-		#g = Github()
-		#repo = g.get_repo("padmalcom/jotts")
-		#latest_release = repo.get_latest_release()		
-		#DOWNLOAD_URL = latest_release.get_assets()[0].browser_download_url
-		#MODEL_SIZE = latest_release.get_assets()[0].size
-		#logger.debug("Latest model is {}.", DOWNLOAD_URL)
-		#return DOWNLOAD_URL
+	def __init__(self):
+		self.VOCODER_RELEASE = "vocoder_v0.1"
+		self.SYNTHESIZER_DOWNLOAD_URL = "https://github.com/padmalcom/jotts/releases/download/{release}/{file}.pt"
+		self.VOCODER_DOWNLOAD_URL = "https://github.com/padmalcom/jotts/releases/download/{vocoder_release}/{vocoder_file}.pt".format(vocoder_release=self.VOCODER_RELEASE, vocoder_file=self.VOCODER_RELEASE)
 		
-	def __prepare_model__(self, force_model_download):
-		DOWNLOAD_URL = "https://github.com/padmalcom/jotts/releases/download/v0.1/v0.1.pt"
-		MODEL_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "saved_models")
+	def __get_released_models__(self):
+		page = 1
+		releases = {}
+		while True:
+			with urllib.request.urlopen(f"https://api.github.com/repos/padmalcom/jotts/releases?per_page=100&page={page}") as response:
+				data = response.read()
+				encoding = response.info().get_content_charset('utf-8')
+				json_data = json.loads(data.decode(encoding))
+				for d in json_data:
+					if not d.get('tag_name').startswith("vocoder"):
+						releases[d.get('tag_name')] = d.get('assets')[0].get('browser_download_url')
+				if not json_data:
+					break
+				page += 1
+		return releases
 		
-		if not os.path.exists(MODEL_FILE):
-			os.makedirs(MODEL_FILE)
-			
-		model_folder_empty = len(os.listdir(MODEL_FILE)) == 0
+	def list_models(self):
+		models = self.__get_released_models__()
+		for m in models:
+			print("Model name:", m, "model url:", models[m])
 		
-		MODEL_FILE = os.path.join(MODEL_FILE, "v0.1.pt")
+	def __prepare_model__(self, model_name, force_model_download):
+		synthesizer_url = self.SYNTHESIZER_DOWNLOAD_URL.format(release=model_name, file=model_name)
+		model_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "saved_models")
+		
+		if not os.path.exists(model_path):
+			os.makedirs(model_path)
+		
+		synthesizer_model_path = os.path.join(model_path, "{model_name}.pt".format(model_name=model_name))
+		vocoder_model_path = os.path.join(model_path, "{model_name}.pt".format(model_name=self.VOCODER_RELEASE))
 		
 		# Is there no or a newer model?
-		if not os.path.exists(MODEL_FILE) or force_model_download == True:
-			if model_folder_empty == True:
-				logger.debug("There is no tts model yet, downloading...")
+		if not os.path.exists(synthesizer_model_path) or force_model_download == True:
+			if not os.path.exists(synthesizer_model_path):
+				logger.debug("There is no synthesizer or vocoder model yet, downloading...")
 			else:
 				if force_model_download:
-					if os.path.exists(MODEL_FILE):
-						os.remove(MODEL_FILE)
+					if os.path.exists(synthesizer_model_path):
+						os.remove(synthesizer_model_path)
 					logger.debug("Forced download starting...")
 				else:
 					logger.debug("There is a newer model, downloading...")
 				
 			# Downloading the latest tts model release
-			logger.debug("Download file: {}", DOWNLOAD_URL)
-			with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, desc=DOWNLOAD_URL.split('/')[-1]) as t:
-				urllib.request.urlretrieve(DOWNLOAD_URL, filename=MODEL_FILE, reporthook=t.update_to)
-		return MODEL_FILE
+			logger.debug("Download synthesizer model: {}", syn_url)
+			with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, desc=syn_url.split('/')[-1]) as t:
+				urllib.request.urlretrieve(syn_url, filename=synthesizer_model_path, reporthook=t.update_to)
+				
+		if not os.path.exists(vocoder_model_path) or force_model_download:
+			logger.debug("Download vocoder model: {}", self.VOCODER_DOWNLOAD_URL)
+			with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, desc=self.VOCODER_DOWNLOAD_URL.split('/')[-1]) as t:
+				urllib.request.urlretrieve(self.VOCODER_DOWNLOAD_URL, filename=vocoder_model_path, reporthook=t.update_to)
+		else:
+			logger.info("No need to download vocoder {}.", self.VOCODER_RELEASE)
+				
+		return synthesizer_model_path, vocoder_model_path
+
+	def load_models(self, model_name = "jonas_v0.1", force_model_download=False):
+		models = self.__get_released_models__()
+		if not model_name in models:
+			logger.error("The model {} does not exists. Use list_models() to see which models exist.", model_name)
+			return
 		
-	def __init__(self, force_model_download=False):
-		logger.debug("Initializing JoTTS...")
+		logger.debug("Loading model {}...", model_name)
 		
-		MODEL_FILE = self.__prepare_model__(force_model_download);
+		synthesizer_model_path, vocoder_model_path = self.__prepare_model__(model_name, force_model_download)
 			
-		self.syn_model_fpath = Path(MODEL_FILE)
 		if torch.cuda.is_available():
 			device_id = torch.cuda.current_device()
 			gpu_properties = torch.cuda.get_device_properties(device_id)
@@ -83,7 +109,8 @@ class JoTTS:
 			logger.debug("Using CPU for inference.")
 			
 		logger.debug("Loading the synthesizer...")
-		self.synthesizer = Synthesizer(self.syn_model_fpath)	
+		self.synthesizer = Synthesizer(Path(synthesizer_model_path))
+		vocoder.load_model(Path(vocoder_model_path))
 
 	def _replace_umlauts(self, string):
 		u = 'ü'.encode()
@@ -106,22 +133,24 @@ class JoTTS:
 		string = string.decode('utf-8')
 		return string
 
-	def _gen_wav(self, text):
+	def _gen_wav(self, text, use_wavernn_vocoder):
 		text = self._replace_umlauts(text)
 		texts = [text]
 		embeds = [[0] * 256]
 		specs = self.synthesizer.synthesize_spectrograms(texts, embeds)
-		spec = specs[0]	 	
+		spec = specs[0]
+		if use_wavernn_vocoder:
+			return vocoder.infer_waveform(spec)
 		return Synthesizer.griffin_lim(spec)
 
 	
-	def speak(self, text, do_sleep = False):
-		generated_wav = self._gen_wav(text)
+	def speak(self, text, do_sleep = False, use_wavernn_vocoder=False):
+		generated_wav = self._gen_wav(text, use_wavernn_vocoder)
 		audio_length = librosa.get_duration(generated_wav, sr = 14545)
 		sd.play(generated_wav.astype(np.float32), round(self.synthesizer.sample_rate / 1.0))
 		if do_sleep:
 			time.sleep(audio_length)
 
-	def textToWav(self, text, out_path='gen.wav'):
-		generated_wav = self._gen_wav(text)
+	def textToWav(self, text, out_path='gen.wav', use_wavernn_vocoder=False):
+		generated_wav = self._gen_wav(text, use_wavernn_vocoder)
 		sf.write(out_path, generated_wav.astype(np.float32), round(self.synthesizer.sample_rate / 1.0))
