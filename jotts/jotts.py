@@ -71,9 +71,9 @@ class JoTTS:
 					logger.debug("There is a newer model, downloading...")
 				
 			# Downloading the latest tts model release
-			logger.debug("Download synthesizer model: {}", syn_url)
-			with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, desc=syn_url.split('/')[-1]) as t:
-				urllib.request.urlretrieve(syn_url, filename=synthesizer_model_path, reporthook=t.update_to)
+			logger.debug("Download synthesizer model: {}", synthesizer_url)
+			with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, desc=synthesizer_url.split('/')[-1]) as t:
+				urllib.request.urlretrieve(synthesizer_url, filename=synthesizer_model_path, reporthook=t.update_to)
 				
 		if not os.path.exists(vocoder_model_path) or force_model_download:
 			logger.debug("Download vocoder model: {}", self.VOCODER_DOWNLOAD_URL)
